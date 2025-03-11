@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Nextflow Config Generator</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    label { display: inline-block; width: 200px; margin-bottom: 10px; }
+    input, textarea { width: 300px; padding: 5px; margin-bottom: 10px; }
+    textarea { height: 300px; }
+    .section { margin-bottom: 20px; padding: 10px; border: 1px solid #ccc; }
+  </style>
+</head>
+<body>
+  <h1>Nextflow Config Generator</h1>
+  <form id="configForm">
+    <div class="section">
+      <h2>General Parameters</h2>
+      
+      <label for="ref_fasta">Reference Fasta:</label>
+      <input type="text" id="ref_fasta" name="ref_fasta" value="hg19.fa"><br>
+      
+      <label for="target_bed">Target BED:</label>
+      <input type="text" id="target_bed" name="target_bed" value="baits.bed"><br>
+      
+      <!-- 添加 Normal Directory 的开关 -->
+      <label for="normal_enabled">Use Normal Directory:</label>
+      <input type="checkbox" id="normal_enabled" name="normal_enabled" checked onchange="toggleNormalDir()"><br>
+      
+      <label for="normal_dir">Normal Directory:</label>
+      <input type="text" id="normal_dir" name="normal_dir" value="normals/"><br>
+      
+      <label for="tumor_dir">Tumor Directory:</label>
+      <input type="text" id="tumor_dir" name="tumor_dir" value="tumors/"><br>
+      
+      <label for="output_dir">Output Directory:</label>
+      <input type="text" id="output_dir" name="output_dir" value="results"><br>
+      
+      <label for="gender_csv">Gender Csv:</label>
+      <input type="text" id="gender_csv" name="gender_csv" value="genes.csv"><br>
+    </div>
+    
+    <div class="section">
+      <h2>FreeC Parameters</h2>
+      <label for="freec_ploidy">Ploidy:</label>
+      <input type="text" id="freec_ploidy" name="freec_ploidy" value="2,3,4"><br>
+      
+      <label for="freec_readCountThreshold">Read Count Threshold:</label>
+      <input type="text" id="freec_readCountThreshold" name="freec_readCountThreshold" value="10"><br>
+      
+      <label for="freec_breakPointThreshold">Break Point Threshold:</label>
+      <input type="text" id="freec_breakPointThreshold" name="freec_breakPointThreshold" value="0.8"><br>
+      
+      <label for="freec_threads">Threads:</label>
+      <input type="number" id="freec_threads" name="freec_threads" value="8"><br>
+      
+      <label for="freec_dbSNP">dbSNP:</label>
+      <input type="text" id="freec_dbSNP" name="freec_dbSNP" value="dbSNP151.hg38-commonSNP_minFreq5Perc_with_CHR.vcf.gz"><br>
+    </div>
+    
+    <button type="button" onclick="generateConfig()">Generate Config</button>
+  </form>
+  
+  <h2>Generated Config</h2>
+  <textarea id="configOutput" readonly></textarea>
+  
+  <script>
+    function toggleNormalDir() {
+      var checkbox = document.getElementById('normal_enabled');
+      var normalInput = document.getElementById('normal_dir');
+      // 当复选框未选中时，禁用输入框并清空其值
+      if (!checkbox.checked) {
+        normalInput.disabled = true;
+        normalInput.value = "";
+      } else {
+        normalInput.disabled = false;
+        normalInput.value = "normals/"; // 恢复默认值
+      }
+    }
+    
+    function generateConfig() {
+      var refFasta = document.getElementById('ref_fasta').value;
+      var targetBed = document.getElementById('target_bed').value;
+      
+      // 如果 normal_dir 被禁用，使用空字符串；否则取输入值
+      var normalDir = document.getElementById('normal_dir').value;
+      
+      var tumorDir = document.getElementById('tumor_dir').value;
+      var outputDir = document.getElementById('output_dir').value;
+      var gender_csv = document.getElementById('gender_csv').value;
+      
+      var freecPloidy = document.getElementById('freec_ploidy').value;
+      var freecReadCountThreshold = document.getElementById('freec_readCountThreshold').value;
+      var freecBreakPointThreshold = document.getElementById('freec_breakPointThreshold').value;
+      var freecThreads = document.getElementById('freec_threads').value;
+      var freecDbSNP = document.getElementById('freec_dbSNP').value;
+      
+      var configText = `
+params {
+    ref_fasta = "${refFasta}"
+    target_bed = "${targetBed}"
+    normal_dir = "${normalDir}"
+    tumor_dir = "${tumorDir}"
+    output_dir = "${outputDir}"
+    
+    gender_csv = "${gender_csv}"
+    freec {
+      ploidy = "${freecPloidy}"
+      readCountThreshold = "${freecReadCountThreshold}"
+      breakPointThreshold = "${freecBreakPointThreshold}"
+      threads = ${freecThreads}
+      dbSNP = "${freecDbSNP}"
+    }
+}
+
+docker {
+  enabled = true
+}
+
+process {
+  cpus = params.freec.threads
+  memory = '8 GB'
+  publishDir = [
+    path: "\${params.output_dir}",
+    mode: 'copy',
+    overwrite: true
+  ]
+}
+`;
+      document.getElementById('configOutput').value = configText.trim();
+    }
+  </script>
+</body>
+</html>
