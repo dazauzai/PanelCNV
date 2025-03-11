@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>Nextflow Config 生成器</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    form { max-width: 600px; }
+    label { display: block; margin-top: 10px; }
+    input, select { width: 100%; padding: 8px; margin-top: 5px; }
+    textarea { width: 100%; height: 300px; margin-top: 10px; }
+    button { margin-top: 10px; padding: 10px; }
+    .error { color: red; }
+  </style>
+</head>
+<body>
+  <h1>Nextflow Config 生成器</h1>
+  <form id="configForm">
+    <label for="ref_fasta">参考基因组 FASTA (params.ref_fasta)：</label>
+    <input type="text" id="ref_fasta" name="ref_fasta" placeholder="/path/to/ucsc.hg19.fa" required>
+
+    <label for="tumor_bam">肿瘤 BAM 文件目录 (params.tumor_bam)：</label>
+    <input type="text" id="tumor_bam" name="tumor_bam" placeholder="/path/to/tumor_bam_directory" required>
+
+    <label for="normal_bam">正常 BAM 文件目录 (params.normal_bam)：</label>
+    <input type="text" id="normal_bam" name="normal_bam" placeholder="/path/to/normal_bam_directory" required>
+
+    <label for="normal_dir_enable">是否开启正常文件输出目录 (params.normal_dir)：</label>
+    <select id="normal_dir_enable" name="normal_dir_enable" required onchange="toggleNormalDir()">
+      <option value="">请选择</option>
+      <option value="yes">是</option>
+      <option value="no">否</option>
+    </select>
+
+    <div id="normal_dir_container" style="display:none;">
+      <label for="normal_dir">正常文件输出目录 (params.normal_dir)：</label>
+      <input type="text" id="normal_dir" name="normal_dir" placeholder="/path/to/normal_dir">
+    </div>
+
+    <label for="output_dir">输出目录 (params.output_dir)：</label>
+    <input type="text" id="output_dir" name="output_dir" placeholder="/path/to/output_dir" required>
+
+    <label for="target_bed">Target BED 文件 (params.target_bed)：</label>
+    <input type="text" id="target_bed" name="target_bed" placeholder="/path/to/target.bed" required>
+
+    <h2>CNVkit 参数 (params.cnvkit)</h2>
+    <label for="cnvkit_func">分析方式 (func)：（amplicon 或 hybrid）</label>
+    <select id="cnvkit_func" name="cnvkit_func" required>
+      <option value="amplicon">amplicon</option>
+      <option value="hybrid">hybrid</option>
+    </select>
+
+    <label for="cnvkit_reffunc">参考生成方式 (reffunc)：（control 或 flat）</label>
+    <select id="cnvkit_reffunc" name="cnvkit_reffunc" required>
+      <option value="control">control</option>
+      <option value="flat">flat</option>
+    </select>
+
+    <label for="cnvkit_dplow">是否过滤低覆盖区域 (dplow)：（yes/no）</label>
+    <select id="cnvkit_dplow" name="cnvkit_dplow" required>
+      <option value="yes">yes</option>
+      <option value="no">no</option>
+    </select>
+
+    <label for="cnvkit_dpout">是否过滤异常值 (dpout)：（yes/no）</label>
+    <select id="cnvkit_dpout" name="cnvkit_dpout" required>
+      <option value="yes">yes</option>
+      <option value="no">no</option>
+    </select>
+
+    <label for="cnvkit_seg">分割方法 (seg)：</label>
+    <input type="text" id="cnvkit_seg" name="cnvkit_seg" placeholder="CBS" required>
+
+    <button type="button" onclick="generateConfig()">Generate Config</button>
+    <div id="errorMsg" class="error"></div>
+  </form>
+
+  <h2>生成的 Config 文件</h2>
+  <textarea id="configOutput" readonly></textarea>
+
+  <script>
+    function toggleNormalDir() {
+      const normalDirEnable = document.getElementById('normal_dir_enable').value;
+      const container = document.getElementById('normal_dir_container');
+      if (normalDirEnable === "yes") {
+        container.style.display = "block";
+      } else {
+        container.style.display = "none";
+      }
+    }
+
+    function generateConfig() {
+      const ref_fasta    = document.getElementById('ref_fasta').value.trim();
+      const tumor_bam    = document.getElementById('tumor_bam').value.trim();
+      const normal_bam   = document.getElementById('normal_bam').value.trim();
+      const normalDirEnable = document.getElementById('normal_dir_enable').value;
+      const output_dir   = document.getElementById('output_dir').value.trim();
+      const target_bed   = document.getElementById('target_bed').value.trim();
+      const cnvkit_func  = document.getElementById('cnvkit_func').value.trim();
+      const cnvkit_reffunc = document.getElementById('cnvkit_reffunc').value.trim();
+      const cnvkit_dplow = document.getElementById('cnvkit_dplow').value.trim();
+      const cnvkit_dpout = document.getElementById('cnvkit_dpout').value.trim();
+      const cnvkit_seg   = document.getElementById('cnvkit_seg').value.trim();
+      
+      const errorMsgEl = document.getElementById('errorMsg');
+      errorMsgEl.textContent = '';
+
+      // 如果未开启正常文件输出目录，则报错
+      if (normalDirEnable !== "yes") {
+        errorMsgEl.textContent = "必须开启正常文件输出目录 (params.normal_dir)！";
+        document.getElementById('configOutput').value = "";
+        return;
+      }
+      
+      // 获取正常文件输出目录的值
+      const normal_dir = document.getElementById('normal_dir').value.trim();
+      if (!normal_dir) {
+        errorMsgEl.textContent = "请填写正常文件输出目录 (params.normal_dir)！";
+        document.getElementById('configOutput').value = "";
+        return;
+      }
+
+      const config = `
+params {
+  ref_fasta = "${ref_fasta}"
+  tumor_bam = "${tumor_bam}"
+  normal_bam = "${normal_bam}"
+  normal_dir = "${normal_dir}"
+  output_dir = "${output_dir}"
+  target_bed = "${target_bed}"
+  cnvkit {
+    func = "${cnvkit_func}"
+    reffunc = "${cnvkit_reffunc}"
+    dplow = "${cnvkit_dplow}"
+    dpout = "${cnvkit_dpout}"
+    seg = "${cnvkit_seg}"
+  }
+}
+      `.trim();
+
+      document.getElementById('configOutput').value = config;
+    }
+  </script>
+</body>
+</html>
